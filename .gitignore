@@ -39,3 +39,7 @@ pnpm-debug.log*
 .vscode/
 *.swp
 *.swo
+
+# Local CLI tools and binaries
+tools/
+*.exe

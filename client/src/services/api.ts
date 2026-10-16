@@ -19,14 +19,38 @@ import { analyzeStudentForOpportunity } from './jdSkillAnalysis';
 import { PROCTORING_CONFIG } from '../config/proctoring';
 
 const resolveApiBase = (): string => {
+  // 1. Dynamic override via URL parameter (?api=https://... or ?api_base=...)
+  if (typeof window !== 'undefined') {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const queryApi = params.get('api') || params.get('api_base');
+      if (queryApi && queryApi.trim() !== '') {
+        const cleanQuery = queryApi.trim().replace(/\/+$/, '');
+        const target = cleanQuery.endsWith('/api') ? cleanQuery : `${cleanQuery}/api`;
+        localStorage.setItem('HIREX_API_BASE', target);
+        return target;
+      }
+      const stored = localStorage.getItem('HIREX_API_BASE');
+      if (stored && stored.trim() !== '') {
+        return stored.trim();
+      }
+    } catch {
+      // Ignore localStorage access restrictions
+    }
+  }
+
+  // 2. Build-time Vite environment variable
   const envApiBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
   if (envApiBase && envApiBase.trim() !== '') {
     const clean = envApiBase.trim().replace(/\/+$/, '');
     return clean.endsWith('/api') ? clean : `${clean}/api`;
   }
+
+  // 3. Render cloud automatic pairing
   if (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')) {
     return 'https://hirex-backend-r6by.onrender.com/api';
   }
+
   return '/api';
 };
 

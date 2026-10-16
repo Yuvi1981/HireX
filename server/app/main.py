@@ -9,11 +9,11 @@ app = FastAPI(
     description="Sovereign AI-ML & Agentic Academia-Industry Bridge for Skill Mapping & Placements"
 )
 
-# Enable CORS for local Vite dev server and Render deployments
+# Enable CORS for local Vite dev server and Render/Vercel deployments
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
-    allow_origin_regex=r"https://.*\.onrender\.com",
+    allow_origin_regex=r"https://.*(\.onrender\.com|\.vercel\.app)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

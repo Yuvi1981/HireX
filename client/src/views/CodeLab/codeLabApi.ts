@@ -14,6 +14,26 @@ import {
 } from './codeLab.types';
 
 const resolveCodeLabApiBase = (): string => {
+  // 1. Dynamic override via URL parameter or stored preference
+  if (typeof window !== 'undefined') {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const queryApi = params.get('api') || params.get('api_base');
+      if (queryApi && queryApi.trim() !== '') {
+        const clean = queryApi.trim().replace(/\/+$/, '').replace(/\/api$/, '');
+        return `${clean}/api/code-lab`;
+      }
+      const stored = localStorage.getItem('HIREX_API_BASE');
+      if (stored && stored.trim() !== '') {
+        const clean = stored.trim().replace(/\/+$/, '').replace(/\/api$/, '');
+        return `${clean}/api/code-lab`;
+      }
+    } catch {
+      // Ignore localStorage access restrictions
+    }
+  }
+
+  // 2. Build-time Vite environment variable
   const envApi = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_BASE_URL) ||
                  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_BASE) ||
                  (typeof process !== 'undefined' && process.env?.REACT_APP_API_BASE);
@@ -22,9 +42,12 @@ const resolveCodeLabApiBase = (): string => {
     const clean = envApi.trim().replace(/\/+$/, '');
     return clean.endsWith('/api/code-lab') ? clean : `${clean.replace(/\/api$/, '')}/api/code-lab`;
   }
+
+  // 3. Render cloud automatic pairing
   if (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')) {
     return 'https://hirex-backend-r6by.onrender.com/api/code-lab';
   }
+
   return '/api/code-lab';
 };
 
