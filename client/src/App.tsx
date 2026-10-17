@@ -34,6 +34,7 @@ import { CodeLabView } from './views/CodeLabView';
 import { AptitudeArenaView } from './views/AptitudeArenaView';
 import { PortfolioTranscriptView } from './views/PortfolioTranscriptView';
 import { ProfileView } from './views/ProfileView';
+import { InterviewSimulatorView } from './views/InterviewSimulatorView';
 import { SkillVerificationView } from './views/SkillVerificationView';
 import { VerifiedSkillPassport } from './components/passport/VerifiedSkillPassport';
 
@@ -116,6 +117,7 @@ export const App: React.FC = () => {
       if (cleanPath === '/codelab' || cleanPath === '/code-lab') return 'codelab';
       if (cleanPath === '/aptitude') return 'aptitude';
       if (cleanPath === '/transcript') return 'transcript';
+      if (cleanPath === '/interview' || cleanPath === '/mock-interview' || cleanPath === '/ai-interview') return 'interview';
       if (cleanPath === '/profile') return 'profile';
       if (cleanPath === '/about') return 'about';
       if (cleanPath === '/contact') return 'contact';
@@ -549,6 +551,10 @@ export const App: React.FC = () => {
           return <AptitudeArenaView />;
         case 'transcript':
           return <PortfolioTranscriptView student={student} />;
+        case 'interview':
+        case 'mock-interview':
+        case 'ai-interview':
+          return <InterviewSimulatorView student={student} onNavigateTab={handleNavigateTab} />;
         case 'profile':
           return (
             <ProfileView

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Home, Briefcase, Code2, Zap, Award, User, Sun, Moon, ShieldCheck, GraduationCap, Building, FolderGit2, Lock } from 'lucide-react';
 import { Role } from '../../types';
 

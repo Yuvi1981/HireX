@@ -3,46 +3,14 @@ import { Award, Mic, FileText, CheckCircle2, Printer, ShieldCheck } from 'lucide
 import { StudentProfile } from '../types';
 import { apiService } from '../services/api';
 
+import { InterviewSimulatorView } from './InterviewSimulatorView';
+
 interface PortfolioTranscriptViewProps {
   student: StudentProfile;
 }
 
 export const PortfolioTranscriptView: React.FC<PortfolioTranscriptViewProps> = ({ student }) => {
   const [activeTab, setActiveTab] = useState<'transcript' | 'mock_interview'>('transcript');
-
-  // Mock Interview State
-  const [targetCompany, setTargetCompany] = useState<string>('Barclays');
-  const [interviewTopic, setInterviewTopic] = useState<string>('DBMS & Asynchronous APIs');
-  const [currentQuestion, setCurrentQuestion] = useState<string>(
-    "In a high-throughput financial system, how would you design a FastAPI service with PostgreSQL to prevent race conditions during simultaneous balance updates, while maintaining O(1) response caching?"
-  );
-  const [studentAnswer, setStudentAnswer] = useState<string>(
-    "I would use PostgreSQL transaction isolation level 'REPEATABLE READ' or 'SELECT ... FOR UPDATE' to acquire an exclusive row lock on the user's balance. For response caching, I would use Redis with an atomic TTL and invalidate the cache immediately upon transaction commit."
-  );
-  const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
-  const [evaluation, setEvaluation] = useState<any>(null);
-
-  const handleEvaluateAnswer = async () => {
-    setIsEvaluating(true);
-    try {
-      const res = await apiService.sendAgentChat(
-        'student',
-        student.id,
-        `interview question: ${currentQuestion} student answer: ${studentAnswer}`
-      );
-      setEvaluation(res.action_data || {
-        evaluated_score: 9,
-        max_score: 10,
-        feedback: "Outstanding response! Mentioned PostgreSQL row-level locks (SELECT FOR UPDATE) and atomic Redis cache invalidation.",
-        keywords_detected: ["transaction", "lock", "cache", "async"],
-        next_followup: "How would you handle distributed transactions if the balance service and the ledger service are deployed as separate microservices?"
-      });
-    } catch {
-      // fallback
-    } finally {
-      setIsEvaluating(false);
-    }
-  };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
@@ -211,112 +179,7 @@ export const PortfolioTranscriptView: React.FC<PortfolioTranscriptViewProps> = (
         </div>
       ) : (
         /* AI Mock Technical Interview Simulator */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-7 p-6 rounded-2xl bg-white dark:bg-card-dark border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
-                  Target Company Simulation
-                </span>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5 tracking-tight">
-                  Technical Screening Simulation
-                </h3>
-              </div>
-              <select
-                value={targetCompany}
-                onChange={(e) => setTargetCompany(e.target.value)}
-                className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold"
-              >
-                <option value="Barclays">Barclays Innovation Lab</option>
-                <option value="Persistent">Persistent Systems</option>
-                <option value="Tata Tech">Tata Technologies</option>
-              </select>
-            </div>
-
-            {/* AI Question Box */}
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/90 dark:border-slate-800">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
-                AI Interviewer Question (Core CS & Architecture)
-              </span>
-              <p className="text-xs md:text-sm font-semibold text-slate-800 dark:text-slate-100 leading-relaxed">
-                "{currentQuestion}"
-              </p>
-            </div>
-
-            {/* Student Answer Textarea */}
-            <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                Your Technical Answer & Algorithmic Defense
-              </label>
-              <textarea
-                value={studentAnswer}
-                onChange={(e) => setStudentAnswer(e.target.value)}
-                rows={6}
-                className="w-full p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-slate-400 dark:focus:border-slate-600 resize-none leading-relaxed font-sans"
-                placeholder="Type your technical defense here..."
-              />
-            </div>
-
-            <button
-              onClick={handleEvaluateAnswer}
-              disabled={isEvaluating}
-              className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold transition shadow-xs disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {isEvaluating ? "Analyzing Technical Depth & Trade-offs..." : "Evaluate Answer with AI Interviewer"}
-            </button>
-          </div>
-
-          {/* AI Feedback & Score (Col 5) */}
-          <div className="lg:col-span-5 space-y-4">
-            {evaluation ? (
-              <div className="p-6 rounded-2xl bg-white dark:bg-card-dark border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-900 dark:text-white">
-                    Technical Depth Score
-                  </span>
-                  <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center font-mono font-black text-lg text-emerald-700 dark:text-emerald-300">
-                    {evaluation.evaluated_score}/10
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">AI Critique</h4>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                    {evaluation.feedback}
-                  </p>
-                </div>
-
-                <div>
-                  <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Keywords Grounded</h4>
-                  <div className="flex flex-wrap gap-1.5">
-                    {evaluation.keywords_detected?.map((k: string) => (
-                      <span key={k} className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-[10px] font-mono font-bold border border-emerald-200/60 dark:border-emerald-800/40">
-                        ✓ {k}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/90 dark:border-slate-800">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
-                    AI Follow-Up Challenge
-                  </span>
-                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                    {evaluation.next_followup}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="p-8 rounded-2xl bg-white dark:bg-card-dark border border-dashed border-slate-200 dark:border-slate-800 text-center flex flex-col items-center justify-center h-full min-h-[260px]">
-                <Mic className="w-8 h-8 text-slate-400 mb-2" />
-                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Ready to Interview</h4>
-                <p className="text-xs text-slate-500 max-w-xs mt-1">
-                  Submit your technical explanation on the left to receive an AI assessment of your algorithmic depth and architectural trade-offs.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
+        <InterviewSimulatorView student={student} />
       )}
     </div>
   );

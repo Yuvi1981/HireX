@@ -83,6 +83,7 @@ class CanonicalStore:
         self.recruiter_assessment_results: Dict[str, dict] = {}
         self.candidate_feedbacks: Dict[str, dict] = {}
         self.skill_timelines: Dict[str, dict] = {}
+        self.interview_sessions: Dict[str, dict] = {}
 
         self._load_or_bootstrap()
 
@@ -121,6 +122,7 @@ class CanonicalStore:
                     self.recruiter_assessment_results = data.get("recruiter_assessment_results", {})
                     self.candidate_feedbacks = data.get("candidate_feedbacks", {})
                     self.skill_timelines = data.get("skill_timelines", {})
+                    self.interview_sessions = data.get("interview_sessions", {})
 
                     if not self.curriculum_mappings or not self.academic_assignments or not self.academic_interventions:
                         self._bootstrap_intelligence_entities()
@@ -699,7 +701,8 @@ class CanonicalStore:
             "recruiter_assessments": self.recruiter_assessments,
             "recruiter_assessment_results": self.recruiter_assessment_results,
             "candidate_feedbacks": self.candidate_feedbacks,
-            "skill_timelines": self.skill_timelines
+            "skill_timelines": self.skill_timelines,
+            "interview_sessions": self.interview_sessions
         }
         with open(tmp_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
@@ -2311,6 +2314,39 @@ class CanonicalStore:
 
             self._save_to_disk()
             return dict(updated_skill_record)
+
+    # -------------------------------------------------------------
+    # AI MOCK INTERVIEW SESSIONS
+    # -------------------------------------------------------------
+    def save_interview_session(self, session: dict) -> dict:
+        """Atomically saves or updates an interview session."""
+        with self._lock:
+            session_id = session.get("id") or f"interview_{uuid.uuid4().hex[:10]}"
+            session["id"] = session_id
+            session["updated_at"] = time.time()
+            if "created_at" not in session:
+                session["created_at"] = session["updated_at"]
+            session["version"] = session.get("version", 0) + 1
+
+            self.interview_sessions[session_id] = session
+            self._save_to_disk()
+            return dict(session)
+
+    def get_interview_session(self, session_id: str) -> Optional[dict]:
+        """Retrieves a single interview session by ID."""
+        with self._lock:
+            s = self.interview_sessions.get(session_id)
+            return dict(s) if s else None
+
+    def get_student_interview_sessions(self, student_id: str) -> List[dict]:
+        """Retrieves all interview sessions for a specific student, sorted by newest first."""
+        with self._lock:
+            matching = [
+                dict(s) for s in self.interview_sessions.values()
+                if s.get("student_id") == student_id
+            ]
+            matching.sort(key=lambda x: x.get("created_at", 0), reverse=True)
+            return matching
 
 
 # Global singleton canonical store
