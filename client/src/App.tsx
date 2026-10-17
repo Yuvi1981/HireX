@@ -21,36 +21,42 @@ import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { SkipToContent } from './components/common/SkipToContent';
 import { GlobalFooter } from './components/common/GlobalFooter';
 
-// Public Flagship Landing Page
-import { LandingPageView } from './views/LandingPageView';
+const ViewLoadingFallback: React.FC = () => (
+  <div className="flex flex-col items-center justify-center min-h-[50vh] w-full py-16 gap-3">
+    <div className="w-9 h-9 border-3 border-indigo-500/20 border-t-indigo-600 rounded-full animate-spin" />
+    <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase">Loading experience...</span>
+  </div>
+);
+
+// Public Flagship Landing Page (Code-split for rapid initial paint)
+const LandingPageView = React.lazy(() => import('./views/LandingPageView').then(m => ({ default: m.LandingPageView })));
 
 // Dedicated Standalone Auth Page (Login & Sign Up)
-import { AuthView } from './views/AuthView';
+const AuthView = React.lazy(() => import('./views/AuthView').then(m => ({ default: m.AuthView })));
 
 // 5 Dedicated Flagship Views + Profile + Skill Journey
-import { DashboardView } from './views/DashboardView';
-import { OpportunitiesView } from './views/OpportunitiesView';
-import { CodeLabView } from './views/CodeLabView';
-import { AptitudeArenaView } from './views/AptitudeArenaView';
-import { PortfolioTranscriptView } from './views/PortfolioTranscriptView';
-import { ProfileView } from './views/ProfileView';
-import { InterviewSimulatorView } from './views/InterviewSimulatorView';
-import { SkillVerificationView } from './views/SkillVerificationView';
-import { VerifiedSkillPassport } from './components/passport/VerifiedSkillPassport';
+const DashboardView = React.lazy(() => import('./views/DashboardView').then(m => ({ default: m.DashboardView })));
+const OpportunitiesView = React.lazy(() => import('./views/OpportunitiesView').then(m => ({ default: m.OpportunitiesView })));
+const CodeLabView = React.lazy(() => import('./views/CodeLabView').then(m => ({ default: m.CodeLabView })));
+const AptitudeArenaView = React.lazy(() => import('./views/AptitudeArenaView').then(m => ({ default: m.AptitudeArenaView })));
+const PortfolioTranscriptView = React.lazy(() => import('./views/PortfolioTranscriptView').then(m => ({ default: m.PortfolioTranscriptView })));
+const ProfileView = React.lazy(() => import('./views/ProfileView').then(m => ({ default: m.ProfileView })));
+const InterviewSimulatorView = React.lazy(() => import('./views/InterviewSimulatorView').then(m => ({ default: m.InterviewSimulatorView })));
+const SkillVerificationView = React.lazy(() => import('./views/SkillVerificationView').then(m => ({ default: m.SkillVerificationView })));
 
 // Dedicated Role-Specific Connected Ecosystem Portals
-import { AcademicianPortalView } from './views/AcademicianPortalView';
-import { RecruiterPortalView } from './views/RecruiterPortalView';
-import { AdminPortalView } from './views/AdminPortalView';
-import { CollaborationHubView } from './views/CollaborationHubView';
+const AcademicianPortalView = React.lazy(() => import('./views/AcademicianPortalView').then(m => ({ default: m.AcademicianPortalView })));
+const RecruiterPortalView = React.lazy(() => import('./views/RecruiterPortalView').then(m => ({ default: m.RecruiterPortalView })));
+const AdminPortalView = React.lazy(() => import('./views/AdminPortalView').then(m => ({ default: m.AdminPortalView })));
+const CollaborationHubView = React.lazy(() => import('./views/CollaborationHubView').then(m => ({ default: m.CollaborationHubView })));
 
 // Public Legal & Information Views
-import { AboutView } from './views/AboutView';
-import { ContactView } from './views/ContactView';
-import { PrivacyPolicyView } from './views/PrivacyPolicyView';
-import { TermsOfServiceView } from './views/TermsOfServiceView';
-import { CookiePolicyView } from './views/CookiePolicyView';
-import { AccessibilityView } from './views/AccessibilityView';
+const AboutView = React.lazy(() => import('./views/AboutView').then(m => ({ default: m.AboutView })));
+const ContactView = React.lazy(() => import('./views/ContactView').then(m => ({ default: m.ContactView })));
+const PrivacyPolicyView = React.lazy(() => import('./views/PrivacyPolicyView').then(m => ({ default: m.PrivacyPolicyView })));
+const TermsOfServiceView = React.lazy(() => import('./views/TermsOfServiceView').then(m => ({ default: m.TermsOfServiceView })));
+const CookiePolicyView = React.lazy(() => import('./views/CookiePolicyView').then(m => ({ default: m.CookiePolicyView })));
+const AccessibilityView = React.lazy(() => import('./views/AccessibilityView').then(m => ({ default: m.AccessibilityView })));
 
 import { Role, StudentProfile, MatchedOpportunity, TrendChartData, PeerScore, PlacementReadinessData, CampusBenchmarkCompany } from './types';
 import { apiService, FALLBACK_STUDENT, FALLBACK_OPPORTUNITIES, FALLBACK_CHART, FALLBACK_PEERS, FALLBACK_READINESS, FALLBACK_BENCHMARKS } from './services/api';
@@ -216,6 +222,7 @@ export const App: React.FC = () => {
   }, [userProfile]);
 
   const [opportunities, setOpportunities] = useState<MatchedOpportunity[]>(FALLBACK_OPPORTUNITIES);
+  const [studentApplications, setStudentApplications] = useState<any[]>([]);
   const [chartData, setChartData] = useState<TrendChartData>(FALLBACK_CHART);
   const [peers, setPeers] = useState<PeerScore[]>(FALLBACK_PEERS);
   const [placementReadiness, setPlacementReadiness] = useState<PlacementReadinessData>(FALLBACK_READINESS);
@@ -238,6 +245,36 @@ export const App: React.FC = () => {
   const [activeModal, setActiveModal] = useState<string>('none');
   const [selectedOpportunity, setSelectedOpportunity] = useState<MatchedOpportunity | null>(null);
   const [agentInitialPrompt, setAgentInitialPrompt] = useState<string | undefined>(undefined);
+
+  const handleApplicationSubmitted = (oppId: string, status: string = 'Applied') => {
+    setStudentApplications((prev) => {
+      const exists = prev.some(
+        (a) => a.opportunity_id === oppId || a.opp_id === oppId
+      );
+      if (exists) {
+        return prev.map((a) =>
+          a.opportunity_id === oppId || a.opp_id === oppId
+            ? { ...a, status, stage: status }
+            : a
+        );
+      }
+      return [
+        ...prev,
+        {
+          id: `app_${Date.now()}`,
+          student_id: student.id,
+          opportunity_id: oppId,
+          opp_id: oppId,
+          company: selectedOpportunity?.company || 'Company',
+          title: selectedOpportunity?.title || 'Position',
+          status: status,
+          stage: status,
+          match_percentage: selectedOpportunity?.match_percentage || 85,
+          applied_at: new Date().toISOString()
+        }
+      ];
+    });
+  };
 
   // Dynamic Skill / Certificate Verification handler
   const handleVerificationSuccess = (newScore: number, newMatchPct: number, skillName: string) => {
@@ -313,6 +350,12 @@ export const App: React.FC = () => {
         if (data.learning_stats) setLearningStats(data.learning_stats);
         if (data.placement_readiness) setPlacementReadiness(data.placement_readiness);
         if (data.campus_benchmarks) setCampusBenchmarks(data.campus_benchmarks);
+        try {
+          const appsRes = await apiService.getStudentApplications(studentId);
+          if (appsRes?.applications) setStudentApplications(appsRes.applications);
+        } catch (e) {
+          console.error("Failed to load student applications in App:", e);
+        }
       } else if (currentRole === 'recruiter') {
 
         const data = await apiService.getRecruiterDashboard();
@@ -402,13 +445,15 @@ export const App: React.FC = () => {
       <div className="min-h-screen bg-porcelain-100 dark:bg-porcelain-950 text-slate-800 dark:text-slate-100 selection:bg-brand-indigo/20 select-none">
         <SkipToContent targetId="main-content" />
         <main id="main-content" tabIndex={-1} className="outline-none">
-          <LandingPageView
-            onEnterRole={handleEnterRoleFromLanding}
-            onOpenAuthModal={() => handleNavigateTab('login')}
-            onNavigateTab={handleNavigateTab}
-            isDark={isDark}
-            toggleDark={toggleDark}
-          />
+          <React.Suspense fallback={<ViewLoadingFallback />}>
+            <LandingPageView
+              onEnterRole={handleEnterRoleFromLanding}
+              onOpenAuthModal={() => handleNavigateTab('login')}
+              onNavigateTab={handleNavigateTab}
+              isDark={isDark}
+              toggleDark={toggleDark}
+            />
+          </React.Suspense>
           <GlobalFooter onNavigateTab={handleNavigateTab} />
         </main>
 
@@ -437,13 +482,15 @@ export const App: React.FC = () => {
       <div className={`min-h-screen ${isDark ? 'dark bg-[#0f1019] text-slate-100' : 'bg-[#f4f5fa] text-slate-900'} selection:bg-brand-indigo/20 select-none transition-colors duration-200`}>
         <SkipToContent targetId="main-content" />
         <main id="main-content" tabIndex={-1} className="outline-none">
-          <AuthView
-            onEnterRole={handleEnterRoleFromLanding}
-            onNavigateTab={handleNavigateTab}
-            initialMode={activeTab === 'signup' ? 'signup' : 'signin'}
-            isDark={isDark}
-            toggleDark={toggleDark}
-          />
+          <React.Suspense fallback={<ViewLoadingFallback />}>
+            <AuthView
+              onEnterRole={handleEnterRoleFromLanding}
+              onNavigateTab={handleNavigateTab}
+              initialMode={activeTab === 'signup' ? 'signup' : 'signin'}
+              isDark={isDark}
+              toggleDark={toggleDark}
+            />
+          </React.Suspense>
         </main>
 
         <CookieBanner openLegalModal={() => setActiveModal('legal')} />
@@ -537,6 +584,8 @@ export const App: React.FC = () => {
             <OpportunitiesView
               opportunities={opportunities}
               student={student}
+              applications={studentApplications}
+              onApplicationSubmitted={handleApplicationSubmitted}
               onOpenOpportunityDetail={(opp) => {
                 setSelectedOpportunity(opp);
                 setActiveModal('opportunity_detail');
@@ -656,7 +705,9 @@ export const App: React.FC = () => {
         {/* Content Body with Error Boundary Isolation */}
         <main id="main-content" tabIndex={-1} className="flex-1 px-4 md:px-8 pb-8 overflow-y-auto outline-none">
           <ErrorBoundary>
-            {renderMainView()}
+            <React.Suspense fallback={<ViewLoadingFallback />}>
+              {renderMainView()}
+            </React.Suspense>
             <GlobalFooter onNavigateTab={handleNavigateTab} />
           </ErrorBoundary>
         </main>
@@ -690,6 +741,30 @@ export const App: React.FC = () => {
         }}
         opportunity={selectedOpportunity}
         role={currentRole}
+        studentId={student.id}
+        isAlreadyApplied={
+          !!selectedOpportunity && studentApplications.some(
+            (a) =>
+              a.opportunity_id === selectedOpportunity.opportunity_id ||
+              a.opp_id === selectedOpportunity.opportunity_id ||
+              a.opportunity_id === (selectedOpportunity as any).id ||
+              (a.company?.toLowerCase() === selectedOpportunity.company?.toLowerCase() &&
+                a.title?.toLowerCase() === selectedOpportunity.title?.toLowerCase())
+          )
+        }
+        appliedStage={
+          selectedOpportunity
+            ? studentApplications.find(
+                (a) =>
+                  a.opportunity_id === selectedOpportunity.opportunity_id ||
+                  a.opp_id === selectedOpportunity.opportunity_id ||
+                  a.opportunity_id === (selectedOpportunity as any).id ||
+                  (a.company?.toLowerCase() === selectedOpportunity.company?.toLowerCase() &&
+                    a.title?.toLowerCase() === selectedOpportunity.title?.toLowerCase())
+              )?.status
+            : undefined
+        }
+        onApplied={handleApplicationSubmitted}
       />
 
       <AuthModal

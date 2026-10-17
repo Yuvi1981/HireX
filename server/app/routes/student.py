@@ -698,7 +698,7 @@ def apply_to_opportunity(req: ApplyOpportunityRequest):
     Applies for an internship or job placement.
     Validates: active opportunity, deadline, eligibility, and prevents duplicate applications.
     """
-    # 1. Find opportunity
+    # 1. Find opportunity (support both id and opportunity_id)
     opp = next((o for o in OPPORTUNITIES if o.get("id") == req.opportunity_id or o.get("opportunity_id") == req.opportunity_id), None)
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found or inactive.")
@@ -708,16 +708,25 @@ def apply_to_opportunity(req: ApplyOpportunityRequest):
     if not can_apply:
         raise HTTPException(status_code=400, detail=reason)
 
+    opp_canonical_id = opp.get("id") or opp.get("opportunity_id") or req.opportunity_id
+
     # 2. Check if student already applied (prevent duplicate applications!)
     already_applied = any(
-        a["student_id"] == req.student_id and a["opportunity_id"] == req.opportunity_id
+        a.get("student_id") == req.student_id and 
+        (a.get("opportunity_id") == req.opportunity_id or a.get("opportunity_id") == opp_canonical_id or a.get("opp_id") == opp_canonical_id)
         for a in APPLICATIONS
     )
     if already_applied:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Duplicate Application: You have already applied for '{opp['title']}' at {opp['company']}."
+        existing_app = next(
+            a for a in APPLICATIONS 
+            if a.get("student_id") == req.student_id and 
+            (a.get("opportunity_id") == req.opportunity_id or a.get("opportunity_id") == opp_canonical_id or a.get("opp_id") == opp_canonical_id)
         )
+        return {
+            "status": "already_applied",
+            "message": f"You have already applied for '{opp['title']}' at {opp['company']}. Current stage: {existing_app.get('status', 'Applied')}.",
+            "application": existing_app
+        }
 
     # 3. Find student
     student = next((s for s in STUDENTS if s["id"] == req.student_id), STUDENTS[0])
@@ -735,14 +744,28 @@ def apply_to_opportunity(req: ApplyOpportunityRequest):
         "student_id": req.student_id,
         "student_name": student["name"],
         "student_email": student["email"],
-        "student_college": student["college"],
+        "student_college": student.get("college", "JSPM RSCOE, Pune"),
+        "student_department": student.get("department", "Computer Engineering"),
+        "student_year": student.get("year", "3rd Year"),
         "opportunity_id": req.opportunity_id,
+        "opp_id": opp_canonical_id,
         "company": opp["company"],
         "title": opp["title"],
+        "recruiter_email": opp.get("recruiter_email"),
         "match_percentage": match_res["match_percentage"],
         "matched_skills": match_res["matched_skills"],
+        "missing_skills": match_res.get("missing_skills", []),
         "status": "Applied",
+        "stage": "Applied",
         "applied_at": now_iso,
+        "status_history": [
+            {
+                "status": "Applied",
+                "stage": "Applied",
+                "updated_at": now_iso,
+                "note": f"Application submitted by candidate {student['name']}."
+            }
+        ],
         "jdFitScore": jd_analysis["overallFit"],
         "jdFitVerdict": jd_analysis["verdict"],
         "jdFitSummary": jd_analysis["summary"],
@@ -767,7 +790,7 @@ def apply_to_opportunity(req: ApplyOpportunityRequest):
 
     return {
         "status": "success",
-        "message": f"Application successfully submitted to {opp['company']} for {opp['title']}!",
+        "message": f"Application successfully submitted to {opp['company']} for {opp['title']}! Current stage: Applied.",
         "application": new_application
     }
 
@@ -777,7 +800,17 @@ def get_student_applications(student_id: str = Query("std_1")):
     Returns all applications submitted by the given student.
     """
     student = next((s for s in STUDENTS if s["id"] == student_id), STUDENTS[0])
-    my_apps = [a for a in APPLICATIONS if a.get("student_id") == student_id or a.get("student_email") == student.get("email")]
+    my_apps = [
+        a for a in APPLICATIONS 
+        if a.get("student_id") == student_id or a.get("student_email") == student.get("email")
+    ]
+    # Ensure every application has stage & status populated
+    for a in my_apps:
+        if "status" not in a:
+            a["status"] = "Applied"
+        if "stage" not in a:
+            a["stage"] = a["status"]
+
     return {
         "status": "success",
         "total": len(my_apps),

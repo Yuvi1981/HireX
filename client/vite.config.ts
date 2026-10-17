@@ -21,12 +21,13 @@ export default defineConfig(({ mode }) => ({
   build: {
     // Production optimization: disable source maps to prevent leakage
     sourcemap: false,
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
           firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+          faceapi: ['@vladmandic/face-api'],
           icons: ['lucide-react']
         }
       }

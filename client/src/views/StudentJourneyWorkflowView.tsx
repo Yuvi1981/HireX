@@ -196,7 +196,8 @@ PROJECTS:
 
   // STEP 8 & 9: Assessment Results & Recommendations
   const [assessmentResult, setAssessmentResult] = useState<MultiSectionResult | null>(null);
-  const [appliedOpportunityIds, setAppliedOpportunityIds] = useState<string[]>(['opp_1']);
+  const [appliedOpportunityIds, setAppliedOpportunityIds] = useState<string[]>([]);
+  const [applicationStages, setApplicationStages] = useState<Record<string, string>>({});
   const [applyingId, setApplyingId] = useState<string | null>(null);
   const [applySuccessMsg, setApplySuccessMsg] = useState<string | null>(null);
   const [applyErrorMsg, setApplyErrorMsg] = useState<string | null>(null);
@@ -205,6 +206,30 @@ PROJECTS:
   const [academicianRecs, setAcademicianRecs] = useState<any[]>([]);
   const [isReassessing, setIsReassessing] = useState<string | null>(null);
   const [reassessmentNotice, setReassessmentNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchAppliedApps = async () => {
+      try {
+        const res = await apiService.getStudentApplications(studentId);
+        if (res && res.applications) {
+          const ids: string[] = [];
+          const stages: Record<string, string> = {};
+          res.applications.forEach((a: any) => {
+            const oppKey = a.opportunity_id || a.opp_id;
+            if (oppKey) {
+              ids.push(oppKey);
+              stages[oppKey] = a.status || a.stage || 'Applied';
+            }
+          });
+          setAppliedOpportunityIds(ids);
+          setApplicationStages(stages);
+        }
+      } catch (err) {
+        console.error('Failed to load applications in StudentJourneyWorkflowView:', err);
+      }
+    };
+    fetchAppliedApps();
+  }, [studentId]);
 
   useEffect(() => {
     const fetchAcademicianRecs = async () => {
@@ -702,15 +727,18 @@ PROJECTS:
 
     try {
       const res = await apiService.applyOpportunity(studentId, opp.opportunity_id);
+      const resStage = res.application?.status || res.application?.stage || 'Applied';
       setAppliedOpportunityIds(prev => [...prev, opp.opportunity_id]);
-      setApplySuccessMsg(`Application Submitted Successfully! Your verified score (${opp.match_percentage}%) has been sent to ${opp.company}.`);
+      setApplicationStages(prev => ({ ...prev, [opp.opportunity_id]: resStage }));
+      setApplySuccessMsg(`Application Submitted Successfully! Your verified score (${opp.match_percentage}%) has been sent to ${opp.company}. Current stage: ${resStage}.`);
       setTimeout(() => setApplySuccessMsg(null), 4500);
     } catch (err: any) {
       if (err.message && err.message.includes('Duplicate')) {
         setApplyErrorMsg(`Duplicate Application: You have already submitted an application for ${opp.company}.`);
       } else {
         setAppliedOpportunityIds(prev => [...prev, opp.opportunity_id]);
-        setApplySuccessMsg(`Application recorded! Your profile is shortlisted for ${opp.company}.`);
+        setApplicationStages(prev => ({ ...prev, [opp.opportunity_id]: 'Applied' }));
+        setApplySuccessMsg(`Application recorded! Your profile is submitted for ${opp.company}.`);
       }
       setTimeout(() => {
         setApplyErrorMsg(null);
@@ -2388,7 +2416,7 @@ PROJECTS:
                         ) : isApplied ? (
                           <>
                             <Check className="w-3.5 h-3.5" />
-                            <span>Applied ✓</span>
+                            <span>Applied ✓ ({applicationStages[opp.opportunity_id] || 'Applied'})</span>
                           </>
                         ) : (
                           <>

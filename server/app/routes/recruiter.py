@@ -172,6 +172,7 @@ def post_job(
     new_id = f"opp_{uuid.uuid4().hex[:6]}"
     new_opp = {
         "id": new_id,
+        "opportunity_id": new_id,
         "title": req.title,
         "company": target_company,
         "domain": req.domain or "Software Engineering",
@@ -192,6 +193,9 @@ def post_job(
         "description": req.description,
         "eligible_streams": req.eligible_streams or ["Computer Engineering", "Information Technology"],
         "eligible_years": req.eligible_years or ["3rd Year", "4th Year"],
+        "recruiter_email": email or recruiter.get("email"),
+        "can_apply": True,
+        "is_expired": False,
         "posted_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     }
 
@@ -278,23 +282,42 @@ def get_applicants(
     apps = list(APPLICATIONS)
 
     if opportunity_id:
-        apps = [a for a in apps if a.get("opportunity_id") == opportunity_id]
+        apps = [a for a in apps if a.get("opportunity_id") == opportunity_id or a.get("opp_id") == opportunity_id]
     elif email:
         recruiter = resolve_current_recruiter(email)
         comp_name = recruiter.get("company", "").lower()
-        if comp_name:
-            filtered = [a for a in apps if comp_name in a.get("company", "").lower()]
-            if filtered:
-                apps = filtered
+        rec_email_clean = email.lower()
+        
+        # All opportunity IDs associated with this recruiter or company
+        rec_opp_ids = {
+            o.get("id") for o in OPPORTUNITIES 
+            if o.get("recruiter_email", "").lower() == rec_email_clean or (comp_name and comp_name in o.get("company", "").lower())
+        }.union({
+            o.get("opportunity_id") for o in OPPORTUNITIES 
+            if o.get("recruiter_email", "").lower() == rec_email_clean or (comp_name and comp_name in o.get("company", "").lower())
+        })
+
+        filtered = [
+            a for a in apps 
+            if a.get("opportunity_id") in rec_opp_ids or 
+               a.get("opp_id") in rec_opp_ids or 
+               (a.get("recruiter_email", "").lower() == rec_email_clean) or
+               (comp_name and comp_name in a.get("company", "").lower())
+        ]
+        if filtered:
+            apps = filtered
 
     if status and status != "All":
-        apps = [a for a in apps if a.get("status", "").lower() == status.lower()]
+        apps = [a for a in apps if a.get("status", "").lower() == status.lower() or a.get("stage", "").lower() == status.lower()]
 
     # Enrich with real-time student shared skill records and AI Match
     enriched_applicants = []
     for a in apps:
         student = next((s for s in STUDENTS if s["id"] == a.get("student_id")), None)
-        opp = next((o for o in OPPORTUNITIES if o["id"] == a.get("opportunity_id")), OPPORTUNITIES[0])
+        opp = next(
+            (o for o in OPPORTUNITIES if o.get("id") == a.get("opportunity_id") or o.get("opportunity_id") == a.get("opportunity_id") or o.get("id") == a.get("opp_id")), 
+            OPPORTUNITIES[0]
+        )
 
         if student:
             match_res = matcher.calculate_match(student, opp)
@@ -346,6 +369,7 @@ def get_applicants(
             "evidence_strength": evidence_strength,
             "explanation": explanation,
             "status": a.get("status", "Applied"),
+            "stage": a.get("stage", a.get("status", "Applied")),
             "applied_at": a.get("applied_at", "2026-10-01T10:30:00Z"),
             "status_history": a.get("status_history", []),
             "jdFitScore": jd_score,
@@ -367,9 +391,9 @@ def update_application_status(
     auth_check = Depends(require_roles(["recruiter", "admin"]))
 ):
     """
-    Status flow: APPLIED -> UNDER REVIEW -> SHORTLISTED -> INTERVIEW -> SELECTED / REJECTED.
+    Status flow: Applied -> Shortlisted -> Assessment -> Interview -> Selected -> Offer.
     When recruiter updates status:
-    - Application record updates.
+    - Application record updates status and stage.
     - Status history is appended.
     - Synchronizes immediately across Student Portal and Academician Placement Analytics!
     """
@@ -377,17 +401,19 @@ def update_application_status(
     if not app_item:
         raise HTTPException(status_code=404, detail="Application record not found.")
 
-    valid_statuses = ["Applied", "Under Review", "Shortlisted", "Interview", "Selected", "Rejected"]
+    valid_statuses = ["Applied", "Shortlisted", "Assessment", "Interview", "Selected", "Offer", "Rejected", "Under Review"]
     matched_status = next((vs for vs in valid_statuses if vs.lower() == req.new_status.lower()), req.new_status.title())
 
     old_status = app_item.get("status", "Applied")
     app_item["status"] = matched_status
+    app_item["stage"] = matched_status
 
     if "status_history" not in app_item:
         app_item["status_history"] = []
 
     history_entry = {
         "status": matched_status,
+        "stage": matched_status,
         "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "note": req.note or f"Status updated to '{matched_status}' by {RECRUITER_PROFILE.get('name', 'Recruiter')}."
     }

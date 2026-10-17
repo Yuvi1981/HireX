@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MatchedOpportunity, StudentProfile } from '../types';
 import { apiService } from '../services/api';
 import { FileText, Printer, Mail, CheckCircle2, ShieldCheck, AlertCircle, Building2, Zap, Car, Sparkles, Clock, ShieldAlert } from 'lucide-react';
@@ -7,6 +7,8 @@ import { CounterfactualGuidanceModal } from '../components/modals/Counterfactual
 interface OpportunitiesViewProps {
   opportunities: MatchedOpportunity[];
   student: StudentProfile;
+  applications?: any[];
+  onApplicationSubmitted?: (oppId: string, status?: string) => void;
   onOpenOpportunityDetail: (opp: MatchedOpportunity) => void;
   onOpenCoPilot: (prompt: string) => void;
 }
@@ -14,11 +16,41 @@ interface OpportunitiesViewProps {
 export const OpportunitiesView: React.FC<OpportunitiesViewProps> = ({
   opportunities,
   student,
+  applications,
+  onApplicationSubmitted,
   onOpenOpportunityDetail,
   onOpenCoPilot
 }) => {
   const [selectedOppId, setSelectedOppId] = useState<string>(opportunities[0]?.opportunity_id || 'opp_1');
   const [activeTab, setActiveTab] = useState<'drives' | 'ats_scanner' | 'funnel' | 'tpo_noc' | 'company_intel'>('drives');
+  const [studentApps, setStudentApps] = useState<any[]>(applications || []);
+
+  useEffect(() => {
+    if (applications && applications.length > 0) {
+      setStudentApps(applications);
+    } else {
+      const fetchApps = async () => {
+        try {
+          const res = await apiService.getStudentApplications(student?.id || 'std_1');
+          if (res?.applications) {
+            setStudentApps(res.applications);
+          }
+        } catch (err) {
+          console.error('Failed to load applications in OpportunitiesView:', err);
+        }
+      };
+      fetchApps();
+    }
+  }, [applications, student?.id]);
+
+  const getApplicationForOpp = (opp: MatchedOpportunity) => {
+    return studentApps.find(a => 
+      a.opportunity_id === opp.opportunity_id ||
+      a.opp_id === opp.opportunity_id ||
+      a.opportunity_id === (opp as any).id ||
+      (a.company?.toLowerCase() === opp.company?.toLowerCase() && a.title?.toLowerCase() === opp.title?.toLowerCase())
+    );
+  };
   const [driveFilter, setDriveFilter] = useState<'live' | 'archive'>('live');
   const [archivedDrives, setArchivedDrives] = useState<MatchedOpportunity[]>([]);
   const [loadingArchive, setLoadingArchive] = useState<boolean>(false);
@@ -144,13 +176,18 @@ PROJECTS:
           </button>
           <button
             onClick={() => setActiveTab('funnel')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
               activeTab === 'funnel'
                 ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             }`}
           >
-            Tracker
+            <span>Application Tracking</span>
+            {studentApps.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-mono font-bold">
+                {studentApps.length}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab('tpo_noc')}
@@ -259,6 +296,10 @@ PROJECTS:
             <div className="lg:col-span-2 space-y-4">
               {currentDrives.map((opp) => {
                 const isSelected = opp.opportunity_id === selectedOppId;
+                const appRecord = getApplicationForOpp(opp);
+                const isApplied = !!appRecord;
+                const currentStage = appRecord?.status || appRecord?.stage || 'Applied';
+
                 return (
                   <div
                     key={opp.opportunity_id}
@@ -276,6 +317,12 @@ PROJECTS:
                           <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                             {opp.match_percentage}% Verified Match
                           </span>
+                          {isApplied && (
+                            <span className="px-2.5 py-0.5 rounded-md text-[10px] font-mono font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              Applied • Stage: {currentStage}
+                            </span>
+                          )}
                           {((opp as any).jdFit || (opp as any).jd_fit) && (
                             <span
                               className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold border ${
@@ -360,15 +407,28 @@ PROJECTS:
                           <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
                           <span>Ask Agent</span>
                         </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenOpportunityDetail(opp);
-                          }}
-                          className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold transition shadow-sm"
-                        >
-                          Drive Details →
-                        </button>
+                        {isApplied ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenOpportunityDetail(opp);
+                            }}
+                            className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-sm flex items-center gap-1.5"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Applied ({currentStage})</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenOpportunityDetail(opp);
+                            }}
+                            className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold transition shadow-sm"
+                          >
+                            Drive Details →
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -378,89 +438,142 @@ PROJECTS:
 
             {/* Quick Drive Sidebar Details */}
             <div className="space-y-4">
-              <div className="p-6 rounded-2xl bg-white dark:bg-card-dark border border-slate-200/90 dark:border-slate-800 shadow-sm">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
-                  Selected Recruitment Drive
-                </span>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-1 tracking-tight">
-                  {selectedOpp.company}
-                </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-300 font-semibold">{selectedOpp.title}</p>
+              {(() => {
+                const selectedOppApp = getApplicationForOpp(selectedOpp);
+                const isSelectedApplied = !!selectedOppApp;
+                const selectedStage = selectedOppApp?.status || selectedOppApp?.stage || 'Applied';
+                const stagesList = ['Applied', 'Shortlisted', 'Assessment', 'Interview', 'Selected', 'Offer'];
 
-                {/* Pillar 4: Expired Drive Advisory Banner in Sidebar */}
-                {selectedOpp.is_expired && (
-                  <div className="mt-4 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs">
-                    <p className="font-bold flex items-center gap-1.5">
-                      <AlertCircle className="w-4 h-4 text-amber-600" />
-                      Drive Closed
-                    </p>
-                    <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed">
-                      This drive closed on {selectedOpp.formatted_deadline || selectedOpp.deadline} and is no longer accepting submissions. Retained for historical eligibility and stipend benchmarking.
-                    </p>
-                  </div>
-                )}
-
-                <div className="space-y-3 mt-4 text-xs">
-                  <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
-                    <span className="text-slate-500">Compensation:</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">{selectedOpp.stipend}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
-                    <span className="text-slate-500">Location:</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">{selectedOpp.location}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
-                    <span className="text-slate-500">Source Verification:</span>
-                    <span className="font-bold text-indigo-600 dark:text-indigo-400 font-mono">
-                      {selectedOpp.verified_source_badge || "Direct Employer Verified"}
+                return (
+                  <div className="p-6 rounded-2xl bg-white dark:bg-card-dark border border-slate-200/90 dark:border-slate-800 shadow-sm">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                      Selected Recruitment Drive
                     </span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
-                    <span className="text-slate-500">Drive Rounds:</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">Aptitude → Coding → Tech → HR</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
-                    <span className="text-slate-500">Eligibility Status:</span>
-                    <span className="font-bold text-emerald-600 font-mono">Passed (TPO Signed)</span>
-                  </div>
-                </div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-1 tracking-tight">
+                      {selectedOpp.company}
+                    </h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 font-semibold">{selectedOpp.title}</p>
 
-                <div className="mt-6 space-y-2">
-                  <button
-                    onClick={() => {
-                      setActiveTab('ats_scanner');
-                    }}
-                    className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-black dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5"
-                  >
-                    Scan Resume with ATS for this Job
-                  </button>
-                  <button
-                    onClick={() => {
-                      setCounterfactualOpp(selectedOpp);
-                      setIsCounterfactualOpen(true);
-                    }}
-                    className="w-full py-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 text-xs font-bold transition flex items-center justify-center gap-1.5 border border-purple-200 dark:border-purple-800/60 shadow-xs"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-purple-500" />
-                    <span>Explain Fit & Bridge Gap (AI)</span>
-                  </button>
-                  {selectedOpp.is_expired ? (
-                    <button
-                      disabled
-                      className="w-full py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-xs font-bold cursor-not-allowed flex items-center justify-center gap-1.5"
-                    >
-                      Drive Closed on {selectedOpp.formatted_deadline || selectedOpp.deadline}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => onOpenOpportunityDetail(selectedOpp)}
-                      className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition"
-                    >
-                      Submit Official TPO Application
-                    </button>
-                  )}
-                </div>
-              </div>
+                    {/* Application Tracking banner if applied */}
+                    {isSelectedApplied && (
+                      <div className="mt-4 p-4 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                            Application Active
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-200 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100">
+                            {selectedStage}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-emerald-800 dark:text-emerald-300 leading-relaxed">
+                          Track applications through Applied, Shortlisted, Assessment, Interview, Selected, and Offer stages.
+                        </p>
+                        <div className="grid grid-cols-6 gap-1 pt-1">
+                          {stagesList.map((stg, i) => {
+                            const activeIdx = stagesList.findIndex(s => s.toLowerCase() === selectedStage.toLowerCase());
+                            const isPast = activeIdx !== -1 && i < activeIdx;
+                            const isCurrent = selectedStage.toLowerCase() === stg.toLowerCase();
+                            return (
+                              <div key={stg} className="text-center" title={stg}>
+                                <div className={`h-1.5 rounded-full mb-1 transition-all ${
+                                  isCurrent ? 'bg-emerald-500 ring-2 ring-emerald-400/40' :
+                                  isPast ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'
+                                }`} />
+                                <span className={`text-[8px] truncate block ${isCurrent ? 'font-bold text-emerald-700 dark:text-emerald-300' : 'text-slate-400'}`}>
+                                  {stg.slice(0, 3)}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Pillar 4: Expired Drive Advisory Banner in Sidebar */}
+                    {selectedOpp.is_expired && (
+                      <div className="mt-4 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs">
+                        <p className="font-bold flex items-center gap-1.5">
+                          <AlertCircle className="w-4 h-4 text-amber-600" />
+                          Drive Closed
+                        </p>
+                        <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed">
+                          This drive closed on {selectedOpp.formatted_deadline || selectedOpp.deadline} and is no longer accepting submissions. Retained for historical eligibility and stipend benchmarking.
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="space-y-3 mt-4 text-xs">
+                      <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                        <span className="text-slate-500">Compensation:</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">{selectedOpp.stipend}</span>
+                      </div>
+                      <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                        <span className="text-slate-500">Location:</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">{selectedOpp.location}</span>
+                      </div>
+                      <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                        <span className="text-slate-500">Source Verification:</span>
+                        <span className="font-bold text-indigo-600 dark:text-indigo-400 font-mono">
+                          {selectedOpp.verified_source_badge || "Direct Employer Verified"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                        <span className="text-slate-500">Drive Rounds:</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">Aptitude → Coding → Tech → HR</span>
+                      </div>
+                      <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                        <span className="text-slate-500">Eligibility Status:</span>
+                        <span className="font-bold text-emerald-600 font-mono">Passed (TPO Signed)</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 space-y-2">
+                      <button
+                        onClick={() => {
+                          setActiveTab('ats_scanner');
+                        }}
+                        className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-black dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5"
+                      >
+                        Scan Resume with ATS for this Job
+                      </button>
+                      <button
+                        onClick={() => {
+                          setCounterfactualOpp(selectedOpp);
+                          setIsCounterfactualOpen(true);
+                        }}
+                        className="w-full py-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 text-xs font-bold transition flex items-center justify-center gap-1.5 border border-purple-200 dark:border-purple-800/60 shadow-xs"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-purple-500" />
+                        <span>Explain Fit & Bridge Gap (AI)</span>
+                      </button>
+                      {isSelectedApplied ? (
+                        <button
+                          onClick={() => onOpenOpportunityDetail(selectedOpp)}
+                          className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Applied ✓ • Stage: {selectedStage}</span>
+                        </button>
+                      ) : selectedOpp.is_expired ? (
+                        <button
+                          disabled
+                          className="w-full py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-xs font-bold cursor-not-allowed flex items-center justify-center gap-1.5"
+                        >
+                          Drive Closed on {selectedOpp.formatted_deadline || selectedOpp.deadline}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => onOpenOpportunityDetail(selectedOpp)}
+                          className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition"
+                        >
+                          Submit Official TPO Application
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
             <div className="p-5 rounded-2xl bg-slate-900 text-white border border-slate-800 shadow-sm">
               <h4 className="text-sm font-bold flex items-center gap-2 text-slate-100">
@@ -589,63 +702,92 @@ PROJECTS:
       {/* Application Tracker Funnel Tab */}
       {activeTab === 'funnel' && (
         <div className="p-6 rounded-2xl bg-white dark:bg-card-dark border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-6">
-          <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">Active Placement Drive Pipeline</h3>
-            <p className="text-xs text-slate-500">Live progress across all registered campus recruitment drives.</p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-indigo-600" />
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Application Tracking</h3>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Track applications through Applied, Shortlisted, Assessment, Interview, Selected, and Offer stages.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                {studentApps.length} Application{studentApps.length !== 1 ? 's' : ''} Tracked
+              </span>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="p-4 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-200/80 dark:border-indigo-800/40">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">1. TPO Verified</span>
-                <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/60">3</span>
-              </div>
-              <div className="space-y-2">
-                <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 text-xs shadow-xs border border-slate-200/60 dark:border-slate-800">
-                  <span className="font-bold block">Tata Technologies</span>
-                  <span className="text-[10px] text-slate-400">Software Trainee</span>
-                </div>
-              </div>
-            </div>
+          {/* 6-Stage Tracking Funnel Columns */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+            {[
+              { id: 'Applied', label: '1. Applied', color: 'slate', desc: 'Credentials & Match Submitted' },
+              { id: 'Shortlisted', label: '2. Shortlisted', color: 'indigo', desc: 'Screened by Recruiter' },
+              { id: 'Assessment', label: '3. Assessment', color: 'purple', desc: 'Aptitude & Coding Round' },
+              { id: 'Interview', label: '4. Interview', color: 'amber', desc: 'Technical & HR Rounds' },
+              { id: 'Selected', label: '5. Selected', color: 'emerald', desc: 'Selection Decision Approved' },
+              { id: 'Offer', label: '6. Offer', color: 'teal', desc: 'Official Offer Released' }
+            ].map((stg) => {
+              const stageApps = studentApps.filter(a => {
+                const s = (a.status || a.stage || 'Applied').toLowerCase();
+                return s === stg.id.toLowerCase();
+              });
 
-            <div className="p-4 rounded-xl bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/40">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-amber-700 dark:text-amber-300">2. Aptitude Round</span>
-                <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60">1</span>
-              </div>
-              <div className="space-y-2">
-                <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 text-xs shadow-xs border border-slate-200/60 dark:border-slate-800">
-                  <span className="font-bold block">Persistent Systems</span>
-                  <span className="text-[10px] text-amber-600 font-semibold">Test Date: Oct 28, 2026</span>
-                </div>
-              </div>
-            </div>
+              return (
+                <div
+                  key={stg.id}
+                  className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{stg.label}</span>
+                      <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                        {stageApps.length}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mb-3">{stg.desc}</p>
 
-            <div className="p-4 rounded-xl bg-purple-50/40 dark:bg-purple-950/20 border border-purple-200/80 dark:border-purple-800/40">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-purple-700 dark:text-purple-300">3. Technical Coding (AST)</span>
-                <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200/60">1</span>
-              </div>
-              <div className="space-y-2">
-                <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 text-xs shadow-xs border border-slate-200/60 dark:border-slate-800">
-                  <span className="font-bold block">Barclays Innovation</span>
-                  <span className="text-[10px] text-purple-600 font-semibold">Live Coding Round</span>
+                    <div className="space-y-2">
+                      {stageApps.length === 0 ? (
+                        <div className="py-6 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-lg">
+                          <span className="text-[10px] text-slate-400 italic">No candidates in this stage</span>
+                        </div>
+                      ) : (
+                        stageApps.map((app: any) => (
+                          <div
+                            key={app.id || app.opportunity_id}
+                            onClick={() => {
+                              const matchedOpp = opportunities.find(o => 
+                                o.opportunity_id === app.opportunity_id || 
+                                o.opportunity_id === app.opp_id || 
+                                o.company?.toLowerCase() === app.company?.toLowerCase()
+                              );
+                              if (matchedOpp) onOpenOpportunityDetail(matchedOpp);
+                            }}
+                            className="p-2.5 rounded-lg bg-white dark:bg-card-dark text-xs shadow-xs border border-slate-200/80 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600 transition cursor-pointer"
+                          >
+                            <div className="flex items-start justify-between gap-1">
+                              <span className="font-bold text-slate-900 dark:text-white truncate block">{app.company}</span>
+                              {app.match_percentage && (
+                                <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
+                                  {app.match_percentage}%
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 block truncate">{app.title}</span>
+                            <div className="mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[9px] text-slate-400">
+                              <span>{app.applied_at ? new Date(app.applied_at).toLocaleDateString() : 'Active'}</span>
+                              <span className="text-indigo-600 dark:text-indigo-400 font-bold">Details →</span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/40">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">4. Offer Letter</span>
-                <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60">1</span>
-              </div>
-              <div className="space-y-2">
-                <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 text-xs shadow-xs border border-slate-200/60 dark:border-slate-800">
-                  <span className="font-bold block">TechCorp Innovations</span>
-                  <span className="text-[10px] text-emerald-600 font-semibold">₹50,000/mo Stipend</span>
-                </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
       )}

@@ -1,4 +1,4 @@
-import { Home, Briefcase, Code2, Zap, Award, User, Sun, Moon, ShieldCheck, GraduationCap, Building, FolderGit2, Lock } from 'lucide-react';
+import { Home, Briefcase, Code2, Zap, Award, User, Sun, Moon, ShieldCheck, GraduationCap, Building, FolderGit2 } from 'lucide-react';
 import { Role } from '../../types';
 
 interface LeftIconRailProps {
@@ -82,20 +82,6 @@ export const LeftIconRail: React.FC<LeftIconRailProps> = ({
               <FolderGit2 className="w-4.5 h-4.5" />
             </button>
 
-            {/* 2.7 Anonymous / Incognito Talent Matching */}
-            <button
-              onClick={() => setActiveTab('incognito')}
-              title="Incognito Talent Matching & Recruiter Invitations"
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-                activeTab === 'incognito' || activeTab === 'talent-visibility'
-                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
-                  : 'text-purple-600 hover:text-purple-800 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/60'
-              }`}
-              aria-label="Incognito Talent"
-            >
-              <Lock className="w-4.5 h-4.5" />
-            </button>
-
             {/* 3. Campus Placement Drives & ATS Scanner */}
             <button
               onClick={() => setActiveTab('opportunities')}
@@ -138,26 +124,26 @@ export const LeftIconRail: React.FC<LeftIconRailProps> = ({
               <Zap className="w-4.5 h-4.5" />
             </button>
 
-            {/* 6. AICTE Skill Transcript & Mock Interview */}
+            {/* 6. Certificate Scanner & Skill Verification (with AI Mock Interview) */}
             <button
               onClick={() => setActiveTab('transcript')}
-              title="Official AICTE Skill Transcript & AI Mock Interview"
+              title="Certificate Scanner & Skill Verification (with AI Mock Interview)"
               className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
                 activeTab === 'transcript'
                   ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
                   : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60'
               }`}
-              aria-label="Skill Transcript"
+              aria-label="Certificate Scanner & Skill Verification"
             >
               <Award className="w-4.5 h-4.5" />
             </button>
 
-            {/* 7. Verified Student Profile & Portfolio */}
+            {/* 7. Verified Student Profile, Portfolio & Incognito Talent Matching */}
             <button
               onClick={() => setActiveTab('profile')}
-              title="Complete Student Profile & Portfolio"
+              title="Verified Student Profile, Portfolio & Incognito Talent Matching"
               className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-                activeTab === 'profile'
+                activeTab === 'profile' || activeTab === 'incognito' || activeTab === 'talent-visibility'
                   ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
                   : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60'
               }`}

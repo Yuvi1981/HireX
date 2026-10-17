@@ -38,11 +38,15 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
       case 'code-lab':
         return 'Algorithmic Code Lab & AST Auditor';
       case 'aptitude':
-        return 'Algorithmic Code Lab & AST Auditor';
+        return 'Aptitude Arena & Cognitive Battery';
+      case 'transcript':
+        return 'Certificate Scanner & Skill Verification';
       case 'collaboration':
       case 'project-hub':
         return 'Project & Research Collaboration Hub';
       case 'profile':
+      case 'incognito':
+      case 'talent-visibility':
         return 'Verified Student Profile & Portfolio';
       case 'passport':
       case 'skill-passport':
@@ -133,7 +137,7 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
           onClick={() => setActiveTab('profile')}
           title="View Student Profile"
           className={`flex items-center gap-2.5 pl-1.5 pr-3 py-1.5 rounded-xl border shadow-xs cursor-pointer transition-all duration-150 select-none ${
-            activeTab === 'profile'
+            activeTab === 'profile' || activeTab === 'incognito' || activeTab === 'talent-visibility'
               ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-sm'
               : 'bg-white dark:bg-card-dark border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
           }`}

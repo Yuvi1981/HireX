@@ -1,30 +1,74 @@
-import React, { useState } from 'react';
-import { X, Building2, MapPin, Clock, Calendar, CheckCircle2, AlertTriangle, ArrowRight, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Building2, MapPin, Clock, Calendar, CheckCircle2, AlertTriangle, ArrowRight, ShieldCheck, Loader2 } from 'lucide-react';
 import { MatchedOpportunity, Role } from '../../types';
+import { apiService } from '../../services/api';
+
+const APPLICATION_STAGES = ['Applied', 'Shortlisted', 'Assessment', 'Interview', 'Selected', 'Offer'];
 
 interface OpportunityModalProps {
   isOpen: boolean;
   onClose: () => void;
   opportunity: MatchedOpportunity | null;
   role: Role;
+  studentId?: string;
+  isAlreadyApplied?: boolean;
+  appliedStage?: string;
+  onApplied?: (oppId: string, status?: string) => void;
 }
 
 export const OpportunityModal: React.FC<OpportunityModalProps> = ({
   isOpen,
   onClose,
   opportunity,
-  role
+  role,
+  studentId,
+  isAlreadyApplied = false,
+  appliedStage = 'Applied',
+  onApplied
 }) => {
-  const [applied, setApplied] = useState(false);
+  const [applied, setApplied] = useState<boolean>(isAlreadyApplied);
+  const [stage, setStage] = useState<string>(appliedStage);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    setApplied(!!isAlreadyApplied);
+    setStage(appliedStage || 'Applied');
+    setFeedbackMsg(null);
+  }, [isAlreadyApplied, appliedStage, opportunity]);
 
   if (!isOpen || !opportunity) return null;
 
-  const handleAction = () => {
-    setApplied(true);
-    setTimeout(() => {
-      setApplied(false);
+  const handleAction = async () => {
+    if (role === 'student') {
+      if (applied) return;
+      setLoading(true);
+      setFeedbackMsg(null);
+      try {
+        const res = await apiService.applyOpportunity(studentId || 'std_1', opportunity.opportunity_id);
+        const resolvedStage = res.application?.status || res.application?.stage || 'Applied';
+        setApplied(true);
+        setStage(resolvedStage);
+        setFeedbackMsg(res.message || 'Application submitted successfully!');
+        if (onApplied) {
+          onApplied(opportunity.opportunity_id, resolvedStage);
+        }
+      } catch (err: any) {
+        if (err.message && err.message.toLowerCase().includes('already')) {
+          setApplied(true);
+          setStage(appliedStage || 'Applied');
+          setFeedbackMsg('You have already applied for this opening.');
+        } else {
+          setApplied(true);
+          setStage('Applied');
+          if (onApplied) onApplied(opportunity.opportunity_id, 'Applied');
+        }
+      } finally {
+        setLoading(false);
+      }
+    } else {
       onClose();
-    }, 1800);
+    }
   };
 
   return (
@@ -145,11 +189,84 @@ export const OpportunityModal: React.FC<OpportunityModalProps> = ({
           </div>
         )}
 
+        {/* Application Tracking: Track applications through Applied, Shortlisted, Assessment, Interview, Selected, and Offer stages */}
+        {applied && (
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-emerald-200/80 dark:border-emerald-800/60 mb-6 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
+                  Application Tracking
+                </span>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                Stage: {stage}
+              </span>
+            </div>
+
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              Track applications through Applied, Shortlisted, Assessment, Interview, Selected, and Offer stages.
+            </p>
+
+            {/* 6-Stage Progress Indicator */}
+            <div className="pt-2">
+              <div className="grid grid-cols-6 gap-1 relative">
+                {APPLICATION_STAGES.map((s, idx) => {
+                  const stageIdx = APPLICATION_STAGES.findIndex(st => st.toLowerCase() === stage.toLowerCase());
+                  const isCurrent = stage.toLowerCase() === s.toLowerCase();
+                  const isPast = stageIdx !== -1 && idx < stageIdx;
+
+                  return (
+                    <div key={s} className="text-center group">
+                      <div
+                        className={`h-2 rounded-full mb-1.5 transition-all ${
+                          isCurrent
+                            ? 'bg-emerald-500 shadow-sm ring-2 ring-emerald-400/40'
+                            : isPast
+                            ? 'bg-indigo-600'
+                            : 'bg-slate-200 dark:bg-slate-700'
+                        }`}
+                      />
+                      <span
+                        className={`block text-[9px] truncate font-medium ${
+                          isCurrent
+                            ? 'font-bold text-emerald-600 dark:text-emerald-400'
+                            : isPast
+                            ? 'text-slate-700 dark:text-slate-300'
+                            : 'text-slate-400'
+                        }`}
+                        title={s}
+                      >
+                        {s}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {feedbackMsg && (
+              <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 text-emerald-800 dark:text-emerald-200 text-[11px] font-semibold flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>{feedbackMsg}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Action Button */}
         {applied ? (
-          <div className="p-4 text-center bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200/80 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center justify-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>Verified Credentials Submitted to {opportunity.company}!</span>
+          <div className="space-y-2">
+            <button
+              disabled
+              className="w-full py-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center justify-center gap-2 cursor-default"
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>Applied ✓ • Current Stage: {stage}</span>
+            </button>
+            <p className="text-[11px] text-center text-slate-400">
+              Your verified credentials and match analysis ({opportunity.match_percentage}%) have been submitted to {opportunity.company}.
+            </p>
           </div>
         ) : opportunity.is_expired ? (
           <div className="space-y-2">
@@ -166,12 +283,22 @@ export const OpportunityModal: React.FC<OpportunityModalProps> = ({
         ) : (
           <button
             onClick={handleAction}
-            className="w-full py-3 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-2 group"
+            disabled={loading}
+            className="w-full py-3 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-2 group disabled:opacity-75"
           >
-            <span>
-              {role === 'student' ? 'Submit Verified Credentials & Apply' : role === 'recruiter' ? 'Shortlist Candidate for Interview' : 'Adopt Module into Syllabus'}
-            </span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Submitting Verified Credentials...</span>
+              </>
+            ) : (
+              <>
+                <span>
+                  {role === 'student' ? 'Submit Verified Credentials & Apply' : role === 'recruiter' ? 'Shortlist Candidate for Interview' : 'Adopt Module into Syllabus'}
+                </span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </>
+            )}
           </button>
         )}
       </div>

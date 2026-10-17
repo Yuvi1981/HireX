@@ -51,6 +51,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 }) => {
   const { userProfile, saveOnboardingProfile } = useAuth();
   const [profileTab, setProfileTab] = useState<'dossier' | 'incognito' | 'collaboration'>(initialTab);
+
+  useEffect(() => {
+    if (initialTab) {
+      setProfileTab(initialTab);
+    }
+  }, [initialTab]);
+
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [name, setName] = useState<string>(student.name || userProfile?.displayName || "Dhruv Patil");
   const [college, setCollege] = useState<string>(student.college || userProfile?.college || "JSPM RSCOE, Pune");
@@ -231,6 +238,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <span className="px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
                   TPO Approved
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setProfileTab('incognito')}
+                  title="Click to view & configure Incognito Talent Matching and Recruiter Invitations"
+                  className="px-2 py-0.5 rounded-md text-xs font-semibold bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800/60 flex items-center gap-1 transition cursor-pointer"
+                >
+                  <Lock className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                  <span>Incognito Blind Matching Active</span>
+                </button>
               </div>
 
               <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mt-1 flex items-center gap-1.5">
@@ -367,7 +383,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           }`}
         >
           <User className="w-4 h-4" />
-          <span>Verified Student Dossier</span>
+          <span>Verified Student Dossier & Portfolio</span>
         </button>
 
         <button
@@ -378,8 +394,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
           }`}
         >
-          <ShieldCheck className="w-4 h-4 text-indigo-500" />
-          <span>Talent Visibility & Incognito Matching</span>
+          <Lock className="w-4 h-4 text-purple-500" />
+          <span>Incognito Talent Matching & Recruiter Invites</span>
         </button>
 
         {onNavigateTab && (
@@ -397,6 +413,30 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <TalentVisibilityCard studentId={student.id} onNavigateTab={onNavigateTab} />
       ) : (
         <>
+          {/* Quick Incognito Blind Matching Status Banner */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50/80 via-indigo-50/40 to-white dark:from-purple-950/20 dark:via-indigo-950/10 dark:to-card-dark border border-purple-200/60 dark:border-purple-800/40 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300">
+                <Lock className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                  Incognito Blind Talent Matching is Active
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Your identity is shielded while top tech recruiters can discover your verified skills and send inbound interview invites.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setProfileTab('incognito')}
+              className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 shrink-0"
+            >
+              <span>Manage Blind Hiring & Invites</span>
+              <ExternalLink className="w-3 h-3" />
+            </button>
+          </div>
+
           {/* 2. Academic & TPO Gatekeeper Dossier (The Core Metrics) */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <div className="p-4 rounded-2xl bg-white dark:bg-card-dark border border-slate-200/80 dark:border-slate-800 shadow-sm text-center">
