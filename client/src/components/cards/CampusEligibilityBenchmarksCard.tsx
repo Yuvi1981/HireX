@@ -109,12 +109,23 @@ export const CampusEligibilityBenchmarksCard: React.FC<CampusEligibilityBenchmar
                 </div>
 
                 <div className="relative w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-300 ${
-                      isCleared ? 'bg-slate-900 dark:bg-slate-100' : 'bg-rose-500'
-                    }`}
-                    style={{ width: `${Math.min(100, (verifiedScore / c.cutoff) * 100)}%` }}
-                  />
+                  {isCleared ? (
+                    <div
+                      className="h-full rounded-full transition-all duration-300 bg-slate-900 dark:bg-slate-100"
+                      style={{ width: `${Math.min(100, (verifiedScore / c.cutoff) * 100)}%` }}
+                    />
+                  ) : (
+                    <div className="h-full w-full flex">
+                      <div
+                        className="h-full bg-slate-800 dark:bg-slate-200"
+                        style={{ width: `${(verifiedScore / 100) * 100}%` }}
+                      />
+                      <div
+                        className="h-full bg-rose-500"
+                        style={{ width: `${((c.cutoff - verifiedScore) / 100) * 100}%` }}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between pt-2 text-[11px] text-slate-600 dark:text-slate-300">

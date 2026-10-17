@@ -49,6 +49,8 @@ export interface PlacementReadinessData {
     description: string;
     target_tab: string;
     target_score?: number;
+    primary_cta_label?: string;
+    secondary_cta_label?: string;
   };
 }
 

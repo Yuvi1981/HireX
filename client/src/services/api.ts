@@ -228,7 +228,9 @@ export const FALLBACK_READINESS = {
     title: "Strengthen Technical Interview Articulation",
     description: "Communication is your biggest current readiness gap (74/100). Articulating architectural choices will increase your clearance odds for Tier-1 corporate drives.",
     target_tab: "codelab",
-    target_score: 85
+    target_score: 85,
+    primary_cta_label: "Practice in Code Lab",
+    secondary_cta_label: "Review Skill Proofs"
   }
 };
 

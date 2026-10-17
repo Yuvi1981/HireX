@@ -265,38 +265,46 @@ def get_student_dashboard(student_id: str = Query("std_1")):
             "title": "Strengthen Technical Interview Articulation",
             "description": f"Communication is your biggest current readiness gap ({interview_score}/100). Articulating architectural choices will increase your clearance odds for Tier-1 corporate drives.",
             "target_tab": "codelab",
-            "target_score": 85
+            "target_score": 85,
+            "primary_cta_label": "Practice in Code Lab",
+            "secondary_cta_label": "Review Skill Proofs"
         }
     elif lowest_pillar["id"] == "technical":
         next_action = {
             "title": "Verify Missing Stacks in Code Lab",
             "description": f"Technical mastery is currently at {tech_score}/100. Completing a 15-minute verification sprint will raise your composite score.",
             "target_tab": "codelab",
-            "target_score": 90
+            "target_score": 90,
+            "primary_cta_label": "Practice in Code Lab",
+            "secondary_cta_label": "Review Skill Proofs"
         }
     elif lowest_pillar["id"] == "aptitude":
         next_action = {
             "title": "Complete Cognitive Aptitude Sprint",
             "description": f"Aptitude & Logic is at {apt_score}/100. Practice high-speed quantitative sprints to clear screening cutoffs.",
             "target_tab": "aptitude",
-            "target_score": 88
+            "target_score": 88,
+            "primary_cta_label": "Enter Aptitude Arena",
+            "secondary_cta_label": "Review Skill Proofs"
         }
     else:
         next_action = {
             "title": "Add Verified Production Projects",
             "description": f"Deploy projects with GitHub AST audits to maximize your placement index.",
             "target_tab": "collaboration",
-            "target_score": 95
+            "target_score": 95,
+            "primary_cta_label": "Submit Project",
+            "secondary_cta_label": "Review Skill Proofs"
         }
 
     placement_readiness = {
         "overall_score": overall_readiness,
         "verified_score": student.get("verified_score", overall_readiness),
         "percentile_rank": percentile_rank,
-        "target_role": student.get("target_role", "Full-Stack AI Engineer"),
+        "target_role": student.get("target_role", "Full-Stack AI Developer"),
         "available_roles": [
-            "Cloud & DevOps Engineer",
             "Full-Stack AI Developer",
+            "Cloud & DevOps Engineer",
             "Autonomous AI Agent Engineer",
             "Distributed Systems Architect"
         ],

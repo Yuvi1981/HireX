@@ -27,13 +27,13 @@ export const PlacementReadinessCard: React.FC<PlacementReadinessCardProps> = ({
 }) => {
   const [showFormulaModal, setShowFormulaModal] = useState<boolean>(false);
   const [selectedRole, setSelectedRole] = useState<string>(
-    placementReadiness?.target_role || student?.target_role || 'Cloud & DevOps Engineer'
+    placementReadiness?.target_role || student?.target_role || 'Full-Stack AI Developer'
   );
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState<boolean>(false);
 
   const availableRoles = placementReadiness?.available_roles || [
-    'Cloud & DevOps Engineer',
     'Full-Stack AI Developer',
+    'Cloud & DevOps Engineer',
     'Autonomous AI Agent Engineer',
     'Distributed Systems Architect'
   ];
@@ -111,7 +111,9 @@ export const PlacementReadinessCard: React.FC<PlacementReadinessCardProps> = ({
     title: 'Strengthen Technical Interview Articulation',
     description: 'Communication is your biggest current readiness gap (74/100). Articulating architectural choices will increase your clearance odds for Tier-1 corporate drives.',
     target_tab: 'codelab',
-    target_score: 85
+    target_score: 85,
+    primary_cta_label: 'Practice in Code Lab',
+    secondary_cta_label: 'Review Skill Proofs'
   };
 
   return (
@@ -281,7 +283,7 @@ export const PlacementReadinessCard: React.FC<PlacementReadinessCardProps> = ({
       {/* ========================================================================= */}
       {/* LOWER BANNER: YOUR NEXT BEST ACTION                                       */}
       {/* ========================================================================= */}
-      <div className="mt-5 p-4.5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200/90 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="mt-5 p-4.5 rounded-2xl bg-purple-50/30 dark:bg-slate-900/50 border border-purple-100/80 dark:border-purple-900/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-start gap-3.5">
           <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950/60 border border-purple-200/80 dark:border-purple-800/60 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0 mt-0.5">
             <Target className="w-5 h-5" />
@@ -313,7 +315,7 @@ export const PlacementReadinessCard: React.FC<PlacementReadinessCardProps> = ({
             onClick={() => onNavigateTab ? onNavigateTab(nextBestAction.target_tab || 'codelab') : null}
             className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-black text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-xs font-bold transition flex items-center gap-1.5 shadow-xs hover:scale-102 active:scale-98"
           >
-            <span>Take Action Now</span>
+            <span>{nextBestAction.primary_cta_label || 'Practice in Code Lab'}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
 
