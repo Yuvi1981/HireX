@@ -17,7 +17,7 @@ if os.path.exists(STAGING_DIR):
     shutil.rmtree(STAGING_DIR)
 os.makedirs(STAGING_DIR, exist_ok=True)
 
-# 1. Define files to copy
+# 1. Define files and directories to copy
 files_to_copy = [
     # Server Backend
     ("server/app/routes/aptitude.py", "server/app/routes/aptitude.py"),
@@ -26,25 +26,33 @@ files_to_copy = [
     ("server/app/data/aptitude_data.py", "server/app/data/aptitude_data.py"),
     ("server/tests/test_aptitude_system.py", "server/tests/test_aptitude_system.py"),
     
-    # Client View & Game Components
+    # Client View, Data & Types
     ("client/src/views/AptitudeArenaView.tsx", "client/src/views/AptitudeArenaView.tsx"),
-    ("client/src/components/aptitude/games/CognitiveFlexibilityGame.tsx", "client/src/components/aptitude/games/CognitiveFlexibilityGame.tsx"),
-    ("client/src/components/aptitude/games/DynamicSpatialGame.tsx", "client/src/components/aptitude/games/DynamicSpatialGame.tsx"),
-    ("client/src/components/aptitude/games/EmotionRecognitionGame.tsx", "client/src/components/aptitude/games/EmotionRecognitionGame.tsx"),
-    ("client/src/components/aptitude/games/InformationProcessingGame.tsx", "client/src/components/aptitude/games/InformationProcessingGame.tsx"),
-    ("client/src/components/aptitude/games/MazePressureGame.tsx", "client/src/components/aptitude/games/MazePressureGame.tsx"),
-    ("client/src/components/aptitude/games/PlanningStrategyGame.tsx", "client/src/components/aptitude/games/PlanningStrategyGame.tsx"),
-    ("client/src/components/aptitude/games/ResourceManagementGame.tsx", "client/src/components/aptitude/games/ResourceManagementGame.tsx"),
-    ("client/src/components/aptitude/games/RiskRewardGame.tsx", "client/src/components/aptitude/games/RiskRewardGame.tsx"),
-    ("client/src/components/aptitude/games/WorkingMemoryGame.tsx", "client/src/components/aptitude/games/WorkingMemoryGame.tsx"),
+    ("client/src/data/aptitudeQuestions.ts", "client/src/data/aptitudeQuestions.ts"),
+    ("client/src/types/aptitude.ts", "client/src/types/aptitude.ts"),
     
     # Client Proctoring Subsystem (Used directly by Aptitude Arena)
     ("client/src/services/proctoringEngine.ts", "client/src/services/proctoringEngine.ts"),
-    ("client/src/services/proctoring/proctoringConfig.ts", "client/src/services/proctoring/proctoringConfig.ts"),
-    ("client/src/services/proctoring/proctoringEngine.ts", "client/src/services/proctoring/proctoringEngine.ts"),
-    ("client/src/services/proctoring/proctoringStateMachine.ts", "client/src/services/proctoring/proctoringStateMachine.ts"),
-    ("client/src/services/proctoring/proctoringViolationEngine.ts", "client/src/services/proctoring/proctoringViolationEngine.ts"),
 ]
+
+# Copy whole aptitude component tree (all 17 games + GameShell, GameCard, QuestionView, ResultRadar, TopicCard)
+aptitude_components_dir = os.path.join(BASE_DIR, "client/src/components/aptitude")
+if os.path.exists(aptitude_components_dir):
+    for root, dirs, files in os.walk(aptitude_components_dir):
+        for f in files:
+            full_src = os.path.join(root, f)
+            rel_path = os.path.relpath(full_src, BASE_DIR)
+            files_to_copy.append((rel_path, rel_path))
+
+# Copy proctoring folder
+proctoring_dir = os.path.join(BASE_DIR, "client/src/services/proctoring")
+if os.path.exists(proctoring_dir):
+    for root, dirs, files in os.walk(proctoring_dir):
+        for f in files:
+            full_src = os.path.join(root, f)
+            rel_path = os.path.relpath(full_src, BASE_DIR)
+            files_to_copy.append((rel_path, rel_path))
+
 
 for src_rel, dst_rel in files_to_copy:
     src_path = os.path.join(BASE_DIR, src_rel)
