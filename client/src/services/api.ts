@@ -17,6 +17,7 @@ import {
 } from '../types';
 import { analyzeStudentForOpportunity } from './jdSkillAnalysis';
 import { PROCTORING_CONFIG } from '../config/proctoring';
+import { SEED_QUESTIONS } from '../data/aptitudeQuestions';
 
 const resolveApiBase = (): string => {
   // 1. Dynamic override via URL parameter (?api=https://... or ?api_base=...)
@@ -3756,37 +3757,51 @@ export const apiService = {
       console.warn("Backend aptitude overview fallback:", e);
     }
     return [
-      { id: "all", name: "All Modules", totalQuestions: 450, completedQuestions: 28, masteryPct: 76 },
-      { id: "quantitative", name: "Quantitative Aptitude", totalQuestions: 150, completedQuestions: 12, masteryPct: 82 },
-      { id: "logical", name: "Logical Reasoning", totalQuestions: 150, completedQuestions: 10, masteryPct: 74 },
-      { id: "technical", name: "Core CS & Systems", totalQuestions: 150, completedQuestions: 6, masteryPct: 70 }
+      { id: "quantitative", name: "Quantitative Aptitude", description: "Percentages, Profit & Loss, Time & Work, Pipes & Cisterns", total_questions: 14, unseen_test_questions: 14, has_visual_assets: true },
+      { id: "logical", name: "Logical Reasoning", description: "Syllogisms, Statements & Conclusions, Seating Arrangement", total_questions: 12, unseen_test_questions: 12, has_visual_assets: true },
+      { id: "numerical", name: "Numerical Ability / Number Series", description: "Series, Patterns, Simplification, Averages, HCF/LCM", total_questions: 12, unseen_test_questions: 12, has_visual_assets: false },
+      { id: "blood_relations", name: "Blood Relations & Direction Sense", description: "Family Trees, Coded Relations, Direction Sense", total_questions: 12, unseen_test_questions: 12, has_visual_assets: true },
+      { id: "verbal", name: "Verbal Ability", description: "Reading Comprehension, Synonyms/Antonyms, Para Jumbles", total_questions: 12, unseen_test_questions: 12, has_visual_assets: false },
+      { id: "data_interpretation", name: "Data Interpretation", description: "Tables, Bar Graphs, Pie Charts, Line Graphs", total_questions: 12, unseen_test_questions: 12, has_visual_assets: true }
     ];
   },
 
-  async getAptitudePracticeQuestions(categoryId: string = "all", difficulty: string = "all", limit: number = 10) {
+  async getAptitudePracticeQuestions(categoryId: string = "all", difficulty: string = "all", limit: number = 20) {
     try {
       const res = await fetch(`${API_BASE}/aptitude/practice/questions?category_id=${encodeURIComponent(categoryId)}&difficulty=${encodeURIComponent(difficulty)}&limit=${limit}`);
       if (res.ok) return await res.json();
     } catch (e) {
       console.warn("Backend practice fetch fallback:", e);
     }
+
+    let filtered = SEED_QUESTIONS;
+    if (categoryId && categoryId.toLowerCase() !== "all") {
+      filtered = filtered.filter(q => q.topic.toLowerCase() === categoryId.toLowerCase());
+    }
+    if (difficulty && difficulty.toLowerCase() !== "all") {
+      filtered = filtered.filter(q => q.difficulty.toLowerCase() === difficulty.toLowerCase());
+    }
+
+    const clientQuestions = filtered.slice(0, limit).map(q => ({
+      id: q.id,
+      category_id: q.topic,
+      category_name: q.topicName,
+      topic: q.subTopic,
+      difficulty: q.difficulty,
+      question: q.question,
+      options: q.options,
+      correct_answer: q.correctIndex,
+      explanation: q.explanation,
+      shortcut: q.shortcut,
+      diagram_type: q.diagramType,
+      diagram_data: q.diagramData,
+      source: q.source
+    }));
+
     return {
       status: "success",
-      count: 1,
-      questions: [
-        {
-          id: "demo_q_1",
-          category_id: "quantitative",
-          category_name: "Quantitative Aptitude",
-          topic: "Time and Work",
-          difficulty: "medium",
-          question: "Pipe A can fill a tank in 12 hours, while Pipe B can empty it in 18 hours. If both pipes are opened simultaneously in an empty tank, in how many hours will the tank be completely filled?",
-          options: ["30 hours", "36 hours", "24 hours", "42 hours"],
-          correct_answer: 1,
-          explanation: "Combined rate = (1/12) - (1/18) = (3 - 2)/36 = 1/36 per hour. Tank is filled in 36 hours.",
-          visual_asset: null
-        }
-      ]
+      count: clientQuestions.length,
+      questions: clientQuestions
     };
   },
 
@@ -3801,13 +3816,20 @@ export const apiService = {
     } catch (e) {
       console.warn("Backend practice submit fallback:", e);
     }
+
+    const q = SEED_QUESTIONS.find(item => item.id === questionId);
+    const isCorrect = q ? (selectedOption === q.correctIndex) : true;
+
     return {
       status: "success",
       questionId,
       selectedOption,
-      isCorrect: true,
-      correctAnswer: selectedOption,
-      explanation: "Practice verification completed."
+      is_correct: isCorrect,
+      correct_answer: q ? q.correctIndex : selectedOption,
+      explanation: q ? q.explanation : "Practice verification completed.",
+      shortcut: q ? q.shortcut : undefined,
+      topic: q ? q.subTopic : "General",
+      category_name: q ? q.topicName : "Aptitude"
     };
   },
 
@@ -3836,6 +3858,32 @@ export const apiService = {
     } catch (e) {
       console.warn("Backend test start fallback:", e);
     }
+
+    // Filter questions based on requested categories
+    let pool = SEED_QUESTIONS;
+    if (categories && categories.length > 0 && !categories.includes('all')) {
+      pool = pool.filter(q => categories.includes(q.topic));
+    }
+    // Shuffle pool
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, Math.min(20, shuffled.length));
+
+    const clientQuestions = selected.map(q => ({
+      id: q.id,
+      category_id: q.topic,
+      category_name: q.topicName,
+      topic: q.subTopic,
+      difficulty: q.difficulty,
+      question: q.question,
+      options: q.options,
+      correct_answer: q.correctIndex,
+      explanation: q.explanation,
+      shortcut: q.shortcut,
+      diagram_type: q.diagramType,
+      diagram_data: q.diagramData,
+      source: q.source
+    }));
+
     return {
       status: "success",
       attemptId: `test_${Date.now()}`,
@@ -3844,7 +3892,7 @@ export const apiService = {
       startedAt: Math.floor(Date.now() / 1000),
       expiresAt: Math.floor(Date.now() / 1000) + (durationMinutes * 60),
       durationMinutes,
-      questions: []
+      questions: clientQuestions
     };
   },
 
